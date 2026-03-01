@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Suzuki–Kasami Algorithm</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Share Tech Mono', monospace;
+  background: #060810;
+  color: #ffffff;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 16px;
+}
+h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem; letter-spacing: 4px;
+  color: #44ccff; text-shadow: 0 0 18px #44ccff99;
+  margin-bottom: 12px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 185px 490px 1fr;
+  gap: 14px; width: 100%; max-width: 1280px; align-items: start;
+}
+.left { display: flex; flex-direction: column; gap: 10px; padding-top: 50px; }
+.box {
+  background: #0d1526; border: 1px solid #2a4a80;
+  border-radius: 8px; padding: 11px;
+}
+.box h3 {
+  font-size: 0.62rem; letter-spacing: 2px; color: #66ccff;
+  border-bottom: 1px solid #2a4a80; padding-bottom: 5px;
+  margin-bottom: 9px; text-transform: uppercase;
+}
+.rn-grid {
+  display: grid; grid-template-columns: auto 1fr 1fr 1fr;
+  gap: 3px 7px; font-size: 0.7rem;
+}
+.rn-grid .hd { color: #88aacc; text-align: center; padding-bottom: 3px; font-weight: bold; }
+.rn-grid .lbl { color: #aabbcc; padding-right: 4px; font-weight: bold; }
+.rn-cell {
+  text-align: center; color: #ffdd44; font-weight: bold; font-size: 0.75rem;
+  border: 1px solid #2a4060; border-radius: 3px; padding: 2px 4px; background: #0a1020;
+}
+.rn-cell.flash { animation: cell-flash 0.9s ease; }
+@keyframes cell-flash {
+  0%   { background:#ffffff; color:#060810; border-color:#ffffff; }
+  100% { background:#0a1020; color:#ffdd44; border-color:#2a4060; }
+}
+.tok-box { border-color: #ccaa0066; }
+.tok-box h3 { color: #ffdd44; border-color: #ccaa0055; }
+.tok-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; font-size: 0.7rem;
+}
+.tok-lbl { color: #aabbcc; font-weight: bold; }
+.tok-val { color: #ffdd44; font-weight: bold; font-size: 0.75rem; }
+.tok-val span.flash { animation: cell-flash 0.9s ease; }
+.tok-q { color: #ffaa33; font-weight: bold; font-size: 0.75rem; }
+.tok-holder { font-size: 0.62rem; color: #aabbcc; margin-top: 5px; }
+.tok-holder span { color: #ffdd44; font-weight: bold; }
+.center { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+#cw { position: relative; width: 490px; height: 380px; }
+svg#sv {
+  position: absolute; top:0; left:0;
+  width:100%; height:100%; overflow:visible; pointer-events:none;
+}
+.proc {
+  position: absolute; width:92px; height:92px; border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'Orbitron',sans-serif; font-weight:700; border:3px solid; z-index:10;
+}
+.proc .pid { font-size:1rem; }
+.proc .pst { font-size:0.5rem; letter-spacing:1px; margin-top:3px; font-weight:bold; }
+#p1 { background:radial-gradient(circle,#1e8a50,#0d5030); border-color:#33ee88;
+      left:199px; top:12px; color:#ccffe0; box-shadow:0 0 18px #33ee8855; }
+#p2 { background:radial-gradient(circle,#8a5010,#5a3000); border-color:#ff9933;
+      left:376px; top:276px; color:#ffe0b0; box-shadow:0 0 18px #ff993355; }
+#p3 { background:radial-gradient(circle,#103a8a,#082058); border-color:#44aaff;
+      left:22px; top:276px; color:#b0d8ff; box-shadow:0 0 18px #44aaff55; }
+#tok {
+  position:absolute; width:52px; height:52px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#ffe066,#c09010);
+  border:3px solid #ffdd44; box-shadow:0 0 16px #ffdd4499;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.48rem; font-weight:bold; color:#5a3a00; z-index:20;
+  transition: left 2s cubic-bezier(.4,0,.2,1), top 2s cubic-bezier(.4,0,.2,1);
+}
+.cs-bar {
+  width:490px; border:2px dashed #333a50; border-radius:8px;
+  padding:11px 18px; text-align:center; font-size:0.78rem; letter-spacing:2px;
+  color:#8899aa; font-family:'Orbitron',sans-serif; transition:all 0.5s;
+}
+.cs-bar.on { border-color:#ff3333; background:#1e0000; color:#ff7777; animation:csglow 1.2s infinite alternate; }
+@keyframes csglow { from{box-shadow:0 0 8px #ff333333;} to{box-shadow:0 0 28px #ff3333bb;} }
+.btns { display:flex; gap:10px; }
+button {
+  font-family:'Share Tech Mono',monospace; font-size:0.75rem; letter-spacing:2px;
+  padding:9px 22px; border:2px solid #44ccff; background:transparent; color:#44ccff;
+  border-radius:5px; cursor:pointer; transition:all 0.2s;
+}
+button:hover { background:#44ccff22; box-shadow:0 0 12px #44ccff55; }
+button:disabled { opacity:0.3; cursor:not-allowed; }
+.al { stroke-width:3; fill:none; stroke-dasharray:300; stroke-dashoffset:300; opacity:0; }
+.al.req { stroke:#ff9933; }
+.al.tok { stroke:#ffdd44; }
+.al.go { opacity:1; animation:darr 1.8s ease forwards, farr 0.7s 3.2s forwards; }
+@keyframes darr { to{stroke-dashoffset:0;} }
+@keyframes farr { to{opacity:0;} }
+.right { display:flex; flex-direction:column; gap:11px; }
+.phase-title {
+  font-family:'Orbitron',sans-serif; font-size:0.72rem; color:#ffdd44;
+  letter-spacing:2px; padding:9px 12px; background:#101828;
+  border:2px solid #3a5080; border-radius:7px; text-align:center;
+}
+.fblock { background:#0d1526; border:1px solid #2a4080; border-radius:8px; overflow:hidden; margin-bottom:9px; }
+.fblock:last-child { margin-bottom:0; }
+.fblock-hd { font-size:0.62rem; letter-spacing:2px; padding:7px 11px; text-transform:uppercase; font-weight:bold; border-bottom:1px solid #1a2a50; }
+.hd-blue  { color:#88ddff; background:#071828; }
+.hd-purp  { color:#cc88ff; background:#0f0820; }
+.hd-teal  { color:#44ffcc; background:#04181a; }
+.hd-amber { color:#ffcc44; background:#1a1200; }
+.hd-red   { color:#ff8899; background:#1a0808; }
+.hd-green { color:#88ff88; background:#081408; }
+.fblock-body { padding:9px 11px; }
+.fl {
+  font-family:'JetBrains Mono',monospace; font-size:0.74rem; line-height:2.2;
+  display:flex; align-items:center; gap:5px; flex-wrap:wrap;
+  border-bottom:1px solid #0f1a30; padding:1px 0;
+}
+.fl:last-child { border-bottom:none; }
+.fc-lbl  { color:#99ccee; font-size:0.67rem; font-weight:bold; }
+.fc-var  { color:#88ddff; font-weight:bold; }
+.fc-op   { color:#bbccdd; }
+.fc-old  { color:#997766; text-decoration:line-through; font-size:0.65rem; }
+.fc-num  { color:#ffdd44; font-weight:bold; }
+.fc-res  { color:#44ff88; font-weight:bold; font-size:0.8rem; }
+.fc-cond { color:#ffcc44; font-weight:bold; font-size:0.76rem; }
+.fc-yes  { color:#00ff88; font-weight:bold; font-size:0.8rem; }
+.fc-no   { color:#ff5555; font-weight:bold; }
+.fc-arr  { color:#66ccff; font-weight:bold; }
+.fc-note { color:#ccddee; font-size:0.65rem; }
+.big-formula {
+  font-family:'JetBrains Mono',monospace; font-size:0.9rem; font-weight:bold;
+  color:#ffee55; background:#1a1500; border:2px solid #ffdd4466;
+  border-radius:5px; padding:7px 11px; margin:5px 0; letter-spacing:1px; text-align:center;
+}
+.big-formula.yes-bg { background:#001a0e; border-color:#00ff8877; color:#00ff88; }
+.log-box {
+  background:#080c18; border:1px solid #1a2a50; border-radius:8px;
+  padding:9px; max-height:175px; overflow-y:auto;
+}
+.log-box h3 { font-size:0.58rem; color:#66aacc; letter-spacing:2px; margin-bottom:5px; text-transform:uppercase; }
+.le { font-size:0.62rem; color:#6688aa; padding:2px 0; border-bottom:1px solid #0c1828; line-height:1.7; }
+.le.new { color:#99ccee; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:#2a4080; border-radius:2px; }
+</style>
+</head>
+<body>
+<h1>SUZUKI – KASAMI ALGORITHM</h1>
+<div class="grid">
+<!-- LEFT -->
+<div class="left">
+  <div class="box">
+    <h3>Request Numbers (RN)</h3>
+    <div class="rn-grid">
+      <div class="hd"></div><div class="hd">P1</div><div class="hd">P2</div><div class="hd">P3</div>
+      <div class="lbl">RN₁</div>
+      <div class="rn-cell" id="c00">0</div><div class="rn-cell" id="c01">0</div><div class="rn-cell" id="c02">0</div>
+      <div class="lbl">RN₂</div>
+      <div class="rn-cell" id="c10">0</div><div class="rn-cell" id="c11">0</div><div class="rn-cell" id="c12">0</div>
+      <div class="lbl">RN₃</div>
+      <div class="rn-cell" id="c20">0</div><div class="rn-cell" id="c21">0</div><div class="rn-cell" id="c22">0</div>
+    </div>
+  </div>
+  <div class="box tok-box">
+    <h3>Token State</h3>
+    <div class="tok-row"><span class="tok-lbl">LN[P1]</span><span class="tok-val"><span id="ln0">0</span></span></div>
+    <div class="tok-row"><span class="tok-lbl">LN[P2]</span><span class="tok-val"><span id="ln1">0</span></span></div>
+    <div class="tok-row"><span class="tok-lbl">LN[P3]</span><span class="tok-val"><span id="ln2">0</span></span></div>
+    <div class="tok-row" style="margin-top:7px;border-top:1px solid #2a4060;padding-top:7px">
+      <span class="tok-lbl">Queue</span><span class="tok-q" id="qv">[ ]</span>
+    </div>
+    <div class="tok-holder">Holder: <span id="hv">P3</span></div>
+  </div>
+</div>
+<!-- CENTER -->
+<div class="center">
+  <div id="cw">
+    <svg id="sv">
+      <defs>
+        <marker id="mr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0,10 3.5,0 7" fill="#ff9933"/>
+        </marker>
+        <marker id="mt" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0,10 3.5,0 7" fill="#ffdd44"/>
+        </marker>
+      </defs>
+      <line id="rq12" class="al req" marker-end="url(#mr)" x1="285" y1="92"  x2="400" y2="286"/>
+      <line id="rq13" class="al req" marker-end="url(#mr)" x1="205" y1="92"  x2="90"  y2="286"/>
+      <line id="rq21" class="al req" marker-end="url(#mr)" x1="396" y1="280" x2="280" y2="92"/>
+      <line id="rq23" class="al req" marker-end="url(#mr)" x1="384" y1="330" x2="102" y2="330"/>
+      <line id="rq31" class="al req" marker-end="url(#mr)" x1="94"  y1="280" x2="210" y2="92"/>
+      <line id="rq32" class="al req" marker-end="url(#mr)" x1="102" y1="336" x2="384" y2="336"/>
+      <line id="tk31"  class="al tok" marker-end="url(#mt)" x1="78"  y1="272" x2="222" y2="56"/>
+      <line id="tk12"  class="al tok" marker-end="url(#mt)" x1="268" y1="56"  x2="412" y2="272"/>
+      <line id="tk23"  class="al tok" marker-end="url(#mt)" x1="376" y1="344" x2="94"  y2="344"/>
+      <line id="tk31b" class="al tok" marker-end="url(#mt)" x1="74"  y1="268" x2="218" y2="52"/>
+      <line id="tk12b" class="al tok" marker-end="url(#mt)" x1="272" y1="52"  x2="416" y2="268"/>
+      <line id="tk21"  class="al tok" marker-end="url(#mt)" x1="408" y1="272" x2="272" y2="56"/>
+    </svg>
+    <div class="proc" id="p1"><div class="pid">P1</div><div class="pst" id="s1">IDLE</div></div>
+    <div class="proc" id="p2"><div class="pid">P2</div><div class="pst" id="s2">IDLE</div></div>
+    <div class="proc" id="p3"><div class="pid">P3</div><div class="pst" id="s3">IDLE</div></div>
+    <div id="tok">TOKEN</div>
+  </div>
+  <div class="cs-bar" id="csb">CRITICAL SECTION — idle</div>
+  <div class="btns">
+    <button id="bstart" onclick="startDemo()">START</button>
+    <button onclick="resetDemo()">RESET</button>
+  </div>
+</div>
+<!-- RIGHT -->
+<div class="right">
+  <div class="phase-title" id="ptitle">Press START to begin</div>
+  <div id="farea"></div>
+  <div class="log-box"><h3>Event Log</h3><div id="log"></div></div>
+</div>
+</div>
+
+<script>
+var RN=[[0,0,0],[0,0,0],[0,0,0]],LN=[0,0,0],Q=[],holder=2,tids=[];
+var CX=[245,422,68],CY=[58,322,322];
+function tp(p){return{left:CX[p]-26,top:CY[p]-26};}
+
+function updLeft(){
+  for(var p=0;p<3;p++) for(var j=0;j<3;j++)
+    document.getElementById('c'+p+j).textContent=RN[p][j];
+  for(var j=0;j<3;j++) document.getElementById('ln'+j).textContent=LN[j];
+  document.getElementById('qv').textContent=Q.length?'['+Q.map(function(x){return'P'+x;}).join(',')+']':'[ ]';
+  document.getElementById('hv').textContent='P'+(holder+1);
+}
+function flashEl(id){
+  var e=document.getElementById(id);if(!e)return;
+  e.classList.remove('flash');void e.offsetWidth;e.classList.add('flash');
+  setTimeout(function(){e.classList.remove('flash');},900);
+}
+function fRN(p,j){flashEl('c'+p+j);}
+function fLN(j){flashEl('ln'+j);}
+function setPhase(t){document.getElementById('ptitle').textContent=t;}
+function setFormulas(h){document.getElementById('farea').innerHTML=h;}
+function addLog(m){
+  var el=document.getElementById('log');
+  el.querySelectorAll('.new').forEach(function(e){e.classList.remove('new');});
+  var d=document.createElement('div');d.className='le new';d.textContent=m;
+  el.insertBefore(d,el.firstChild);
+}
+function setSt(p,t){document.getElementById(['s1','s2','s3'][p]).textContent=t;}
+function setCS(on,p){
+  var b=document.getElementById('csb');
+  if(on){b.className='cs-bar on';b.textContent='P'+(p+1)+' IS IN CRITICAL SECTION';}
+  else  {b.className='cs-bar';b.textContent='CRITICAL SECTION — idle';}
+}
+function moveTok(p){
+  var pos=tp(p),t=document.getElementById('tok');
+  t.style.left=pos.left+'px';t.style.top=pos.top+'px';
+  holder=p;updLeft();
+}
+function showArr(id){
+  var e=document.getElementById(id);if(!e)return;
+  e.classList.remove('go');void e.offsetWidth;e.classList.add('go');
+  setTimeout(function(){e.classList.remove('go');},4200);
+}
+function at(ms,fn){tids.push(setTimeout(fn,ms));}
+
+// HTML helpers
+function lbl(t){return'<span class="fc-lbl">'+t+'</span>';}
+function v(t){return'<span class="fc-var">'+t+'</span>';}
+function op(t){return'<span class="fc-op">'+t+'</span>';}
+function old(t){return'<span class="fc-old">'+t+'</span>';}
+function num(t){return'<span class="fc-num">'+t+'</span>';}
+function res(t){return'<span class="fc-res">'+t+'</span>';}
+function cnd(t){return'<span class="fc-cond">'+t+'</span>';}
+function yes(t){return'<span class="fc-yes">'+t+'</span>';}
+function no(t){return'<span class="fc-no">'+t+'</span>';}
+function arr(t){return'<span class="fc-arr">'+t+'</span>';}
+function note(t){return'<span class="fc-note">'+t+'</span>';}
+function fl(){return'<div class="fl">'+Array.prototype.join.call(arguments,'')+'</div>';}
+function bf(t,c){return'<div class="big-formula '+(c||'')+'">'+t+'</div>';}
+function fb(hc,ht,b){return'<div class="fblock"><div class="fblock-hd '+hc+'">'+ht+'</div><div class="fblock-body">'+b+'</div></div>';}
+
+function fmtRequest(pi,sn){
+  var P=pi+1,others=[1,2,3].filter(function(x){return x!==P;});
+  return fb('hd-blue','① RN UPDATE — REQUESTER',
+    fl(lbl('Formula:'),v('RN['+P+']['+P+']'),op('='),v('RN['+P+']['+P+']'),op('+ 1'))+
+    fl(lbl('Before: '),v('RN['+P+']['+P+']'),op('='),old(sn-1))+
+    fl(lbl('Calc:   '),num(sn-1),op('+ 1'),op('='),res(sn))+
+    bf('RN['+P+']['+P+']  =  '+(sn-1)+' + 1  =  '+sn)
+  )+fb('hd-purp','② BROADCAST REQUEST TO ALL',
+    fl(lbl('Message:'),v('REQUEST( P'+P+',  sn = '+sn+' )'),lbl('to all'))+
+    fl(arr('P'+P+'  →  P'+others[0]+':'),cnd('REQUEST( P'+P+', sn='+sn+' )'))+
+    fl(arr('P'+P+'  →  P'+others[1]+':'),cnd('REQUEST( P'+P+', sn='+sn+' )'))
+  );
+}
+
+function fmtMultiCheck(ph,checks){
+  var H=ph+1;
+  var body=bf('RN[i][j]  ==  LN[j] + 1');
+  for(var i=0;i<checks.length;i++){
+    var c=checks[i],J=c.pj+1,e=(c.rnVal===c.lnVal+1);
+    body+=fl(
+      lbl('P'+J+': '),
+      v('RN['+H+']['+J+']'),op('='),num(c.rnVal),
+      op('  |  '),
+      v('LN['+J+']'),op('='),num(c.lnVal),
+      op('  →  '),
+      num(c.rnVal),op('=='),num(c.lnVal+1),op('  ?'),
+      e?yes('  ✔  TRUE  →  ELIGIBLE'):no('  ✗  FALSE  →  SKIP')
+    );
+  }
+  return fb('hd-amber','🔥 ELIGIBILITY CHECK  —  Core Formula',body);
+}
+
+function fmtQueue(action,pj,qb,qa){
+  var J=pj+1;
+  var bs=qb.length?'['+qb.map(function(x){return'P'+x;}).join(',')+']':'[ ]';
+  var as=qa.length?'['+qa.map(function(x){return'P'+x;}).join(',')+']':'[ ]';
+  return fb('hd-green','④ QUEUE OPERATION',
+    fl(lbl('Action: '),cnd(action==='push'?'push( P'+J+' )':'pop()  →  P'+J))+
+    fl(lbl('Before: '),v('Q'),op('='),cnd(bs))+
+    fl(lbl('After:  '),v('Q'),op('='),res(as))
+  );
+}
+
+function fmtLNUpdate(pi,oldVal,newVal){
+  var P=pi+1;
+  return fb('hd-red','④ UPDATE LN  —  ON CS EXIT',
+    fl(lbl('Formula:'),v('LN['+P+']'),op('='),v('RN['+P+']['+P+']'))+
+    fl(lbl('Before: '),v('LN['+P+']'),op('='),old(oldVal))+
+    fl(lbl('After:  '),v('LN['+P+']'),op('='),num(newVal))+
+    bf('LN['+P+']  =  RN['+P+']['+P+']  =  '+newVal)
+  );
+}
+
+function fmtScan(pi,checks){
+  var P=pi+1;
+  var body=fl(lbl('Formula:'),cnd('if  RN[j] == LN[j] + 1  →  add j to Queue'));
+  for(var i=0;i<checks.length;i++){
+    var c=checks[i],J=c.pj+1,e=(c.rnVal===c.lnVal+1);
+    body+=fl(
+      lbl('P'+J+': '),
+      v('RN['+P+']['+J+']'),op('='),num(c.rnVal),
+      op('  |  '),
+      v('LN['+J+']'),op('='),num(c.lnVal),
+      op('  →  '),
+      num(c.rnVal),op('=='),num(c.lnVal+1),op('  ?'),
+      e?yes('  ✔  add P'+J+' to Queue'):no('  ✗  skip')
+    );
+  }
+  return fb('hd-green','⑤ SCAN FOR NEXT ELIGIBLE (after CS exit)',body);
+}
+
+function startDemo(){
+  document.getElementById('bstart').disabled=true;
+  var t=0, D=3800;
+
+  at(t,function(){
+    updLeft(); setPhase('INITIAL STATE');
+    setFormulas(fb('hd-blue','STARTING CONDITIONS',
+      fl(lbl('RN arrays:'),v('RN[1]=RN[2]=RN[3]='),res('[0, 0, 0]'))+
+      fl(lbl('Token LN: '),v('LN'),op('='),res('[0, 0, 0]'))+
+      fl(lbl('Queue:    '),v('Q'),op('='),res('[ ]'))+
+      fl(lbl('Holder:   '),res('P3'))
+    ));
+    addLog('System init — token at P3');
+  });
+
+  // R1: P1 requests, P3 holds
+  at(t+=D,function(){
+    RN[0][0]++;RN[1][0]=RN[0][0];RN[2][0]=RN[0][0];
+    updLeft();[0,1,2].forEach(function(p){fRN(p,0);});
+    setSt(0,'REQUEST'); setPhase('ROUND 1  ·  P1 SENDS REQUEST');
+    setFormulas(fmtRequest(0,RN[0][0]));
+    addLog('R1 · P1: RN[1][1] 0→1, broadcasts REQUEST(P1,1)');
+    showArr('rq12');setTimeout(function(){showArr('rq13');},500);
+  });
+
+  at(t+=D,function(){
+    setPhase('ROUND 1  ·  P3 RECEIVES & CHECKS ELIGIBILITY');
+    setFormulas(
+      fb('hd-teal','③ P3 RECEIVES REQUEST FROM P1',
+        fl(lbl('Formula:'),v('RN[3][1]'),op('='),op('max('),v('RN[3][1]'),op(', sn)'))+
+        fl(lbl('Values: '),op('max('),num(RN[2][0]),op(','),num(1),op(')'),op('='),res(RN[2][0]))+
+        bf('RN[3][1]  =  max( '+RN[2][0]+', 1 )  =  '+RN[2][0])
+      )+
+      fmtMultiCheck(2,[{pj:0,rnVal:RN[2][0],lnVal:LN[0]}])
+    );
+    addLog('R1 · P3 updates RN[3][1]=1, checks eligibility: 1==0+1 ✔');
+  });
+
+  at(t+=D,function(){
+    var qb=Q.slice();Q.push(1);updLeft();
+    setPhase('ROUND 1  ·  P3 ENQUEUES P1  →  SENDS TOKEN');
+    setFormulas(
+      fmtQueue('push',1,qb,Q.slice())+
+      fb('hd-purp','TOKEN TRANSFER',
+        fl(arr('P3  ───── TOKEN ─────▶  P1'))
+      )
+    );
+    addLog('R1 · P3 enqueues P1, dequeues, sends TOKEN → P1');
+    showArr('tk31');
+  });
+
+  at(t+=D,function(){
+    Q.shift();updLeft();
+    moveTok(0);setSt(0,'IN CS');setCS(true,0);
+    setPhase('ROUND 1  ·  P1 IS IN CRITICAL SECTION');
+    setFormulas(fb('hd-blue','CS ACCESS GRANTED',
+      fl(lbl('P1 executes critical section.'))+
+      fl(lbl('Queue: '),v('Q'),op('='),note('[ ]  (dequeued on token receive)'))+
+      fl(lbl('LN:    '),v('LN'),op('='),num('['+LN+']'))
+    ));
+    addLog('R1 · P1 enters CS');
+  });
+
+  at(t+=D*1.4,function(){
+    var old0=LN[0];LN[0]=RN[0][0];
+    setCS(false,0);setSt(0,'IDLE');updLeft();fLN(0);
+    setPhase('ROUND 1  ·  P1 EXITS CS');
+    setFormulas(
+      fmtLNUpdate(0,old0,LN[0])+
+      fmtScan(0,[{pj:1,rnVal:RN[0][1],lnVal:LN[1]},{pj:2,rnVal:RN[0][2],lnVal:LN[2]}])+
+      fb('hd-green','RESULT',fl(arr('Queue stays empty  →  P1 keeps token')))
+    );
+    addLog('R1 · P1 exits CS → LN[1]=1. Keeps token.');
+  });
+
+  // R2: P2 requests, P1 holds
+  at(t+=D,function(){
+    RN[1][1]++;RN[0][1]=RN[1][1];RN[2][1]=RN[1][1];
+    updLeft();[0,1,2].forEach(function(p){fRN(p,1);});
+    setSt(1,'REQUEST'); setPhase('ROUND 2  ·  P2 SENDS REQUEST');
+    setFormulas(fmtRequest(1,RN[1][1]));
+    addLog('R2 · P2: RN[2][2] 0→1, broadcasts REQUEST(P2,1)');
+    showArr('rq21');setTimeout(function(){showArr('rq23');},500);
+  });
+
+  at(t+=D,function(){
+    setPhase('ROUND 2  ·  P1 RECEIVES & CHECKS ELIGIBILITY');
+    setFormulas(
+      fb('hd-teal','③ P1 RECEIVES REQUEST FROM P2',
+        fl(lbl('Formula:'),v('RN[1][2]'),op('='),op('max('),v('RN[1][2]'),op(', sn)'))+
+        fl(lbl('Values: '),op('max('),num(RN[0][1]),op(','),num(1),op(')'),op('='),res(RN[0][1]))+
+        bf('RN[1][2]  =  max( '+RN[0][1]+', 1 )  =  '+RN[0][1])
+      )+
+      fmtMultiCheck(0,[{pj:1,rnVal:RN[0][1],lnVal:LN[1]}])
+    );
+    addLog('R2 · P1 updates RN[1][2]=1, checks eligibility: 1==0+1 ✔');
+  });
+
+  at(t+=D,function(){
+    var qb=Q.slice();Q.push(2);updLeft();
+    setPhase('ROUND 2  ·  P1 ENQUEUES P2  →  SENDS TOKEN');
+    setFormulas(
+      fmtQueue('push',2,qb,Q.slice())+
+      fb('hd-purp','TOKEN TRANSFER',fl(arr('P1  ───── TOKEN ─────▶  P2')))
+    );
+    addLog('R2 · P1 enqueues P2, sends TOKEN → P2');
+    showArr('tk12');
+  });
+
+  at(t+=D,function(){
+    Q.shift();updLeft();
+    moveTok(1);setSt(1,'IN CS');setCS(true,1);
+    setPhase('ROUND 2  ·  P2 IS IN CRITICAL SECTION');
+    setFormulas(fb('hd-blue','CS ACCESS GRANTED',
+      fl(lbl('P2 executes critical section.'))+
+      fl(lbl('LN: '),v('LN'),op('='),num('['+LN+']'))
+    ));
+    addLog('R2 · P2 enters CS');
+  });
+
+  at(t+=D*1.4,function(){
+    var old1=LN[1];LN[1]=RN[1][1];
+    setCS(false,1);setSt(1,'IDLE');updLeft();fLN(1);
+    setPhase('ROUND 2  ·  P2 EXITS CS');
+    setFormulas(
+      fmtLNUpdate(1,old1,LN[1])+
+      fmtScan(1,[{pj:0,rnVal:RN[1][0],lnVal:LN[0]},{pj:2,rnVal:RN[1][2],lnVal:LN[2]}])+
+      fb('hd-green','RESULT',fl(arr('Queue stays empty  →  P2 keeps token')))
+    );
+    addLog('R2 · P2 exits CS → LN[2]=1. Keeps token.');
+  });
+
+  // R3: P3 requests, P2 holds
+  at(t+=D,function(){
+    RN[2][2]++;RN[0][2]=RN[2][2];RN[1][2]=RN[2][2];
+    updLeft();[0,1,2].forEach(function(p){fRN(p,2);});
+    setSt(2,'REQUEST'); setPhase('ROUND 3  ·  P3 SENDS REQUEST');
+    setFormulas(fmtRequest(2,RN[2][2]));
+    addLog('R3 · P3: RN[3][3] 0→1, broadcasts REQUEST(P3,1)');
+    showArr('rq31');setTimeout(function(){showArr('rq32');},500);
+  });
+
+  at(t+=D,function(){
+    setPhase('ROUND 3  ·  P2 RECEIVES & CHECKS ELIGIBILITY');
+    setFormulas(
+      fb('hd-teal','③ P2 RECEIVES REQUEST FROM P3',
+        fl(lbl('Formula:'),v('RN[2][3]'),op('='),op('max('),v('RN[2][3]'),op(', sn)'))+
+        fl(lbl('Values: '),op('max('),num(RN[1][2]),op(','),num(1),op(')'),op('='),res(RN[1][2]))+
+        bf('RN[2][3]  =  max( '+RN[1][2]+', 1 )  =  '+RN[1][2])
+      )+
+      fmtMultiCheck(1,[{pj:2,rnVal:RN[1][2],lnVal:LN[2]}])
+    );
+    addLog('R3 · P2 updates RN[2][3]=1, checks eligibility: 1==0+1 ✔');
+  });
+
+  at(t+=D,function(){
+    var qb=Q.slice();Q.push(3);updLeft();
+    setPhase('ROUND 3  ·  P2 ENQUEUES P3  →  SENDS TOKEN');
+    setFormulas(
+      fmtQueue('push',3,qb,Q.slice())+
+      fb('hd-purp','TOKEN TRANSFER',fl(arr('P2  ───── TOKEN ─────▶  P3')))
+    );
+    addLog('R3 · P2 enqueues P3, sends TOKEN → P3');
+    showArr('tk23');
+  });
+
+  at(t+=D,function(){
+    Q.shift();updLeft();
+    moveTok(2);setSt(2,'IN CS');setCS(true,2);
+    setPhase('ROUND 3  ·  P3 IS IN CRITICAL SECTION');
+    setFormulas(fb('hd-blue','CS ACCESS GRANTED',
+      fl(lbl('P3 executes critical section.'))+
+      fl(lbl('LN: '),v('LN'),op('='),num('['+LN+']'))
+    ));
+    addLog('R3 · P3 enters CS');
+  });
+
+  at(t+=D*1.4,function(){
+    var old2=LN[2];LN[2]=RN[2][2];
+    setCS(false,2);setSt(2,'IDLE');updLeft();fLN(2);
+    setPhase('ROUND 3  ·  P3 EXITS CS');
+    setFormulas(
+      fmtLNUpdate(2,old2,LN[2])+
+      fmtScan(2,[{pj:0,rnVal:RN[2][0],lnVal:LN[0]},{pj:1,rnVal:RN[2][1],lnVal:LN[1]}])+
+      fb('hd-green','RESULT',fl(arr('Queue stays empty  →  P3 keeps token')))
+    );
+    addLog('R3 · P3 exits CS → LN[3]=1. Keeps token.');
+  });
+
+  // R4: P1 & P2 simultaneous, P3 holds
+  at(t+=D,function(){
+    var o1=RN[0][0],o2=RN[1][1];
+    RN[0][0]++;RN[1][0]=RN[0][0];RN[2][0]=RN[0][0];
+    RN[1][1]++;RN[0][1]=RN[1][1];RN[2][1]=RN[1][1];
+    updLeft();[0,1,2].forEach(function(p){fRN(p,0);fRN(p,1);});
+    setSt(0,'REQUEST');setSt(1,'REQUEST');
+    setPhase('ROUND 4  ·  P1 & P2 SIMULTANEOUS REQUEST');
+    setFormulas(
+      fb('hd-blue','① P1 INCREMENTS RN',
+        fl(lbl('Formula:'),v('RN[1][1]'),op('='),v('RN[1][1]'),op('+ 1'))+
+        fl(lbl('Calc:   '),num(o1),op('+ 1'),op('='),res(RN[0][0]))+
+        bf('RN[1][1]  =  '+o1+' + 1  =  '+RN[0][0]+'   (sn = '+RN[0][0]+')')
+      )+
+      fb('hd-blue','① P2 INCREMENTS RN',
+        fl(lbl('Formula:'),v('RN[2][2]'),op('='),v('RN[2][2]'),op('+ 1'))+
+        fl(lbl('Calc:   '),num(o2),op('+ 1'),op('='),res(RN[1][1]))+
+        bf('RN[2][2]  =  '+o2+' + 1  =  '+RN[1][1]+'   (sn = '+RN[1][1]+')')
+      )+
+      fb('hd-purp','② BOTH BROADCAST SIMULTANEOUSLY',
+        fl(arr('P1 → P2, P3:'),cnd('REQUEST( P1, sn='+RN[0][0]+' )'))+
+        fl(arr('P2 → P1, P3:'),cnd('REQUEST( P2, sn='+RN[1][1]+' )'))
+      )
+    );
+    addLog('R4 · P1 & P2 both REQUEST simultaneously (sn=2 each)');
+    showArr('rq12');showArr('rq21');
+    setTimeout(function(){showArr('rq13');showArr('rq23');},500);
+  });
+
+  at(t+=D,function(){
+    setPhase('ROUND 4  ·  P3 RECEIVES BOTH REQUESTS');
+    setFormulas(
+      fb('hd-teal','③ P3 RECEIVES FROM P1 & P2',
+        fl(lbl('RN[3][1] = max('),num(RN[2][0]),op(','),num(RN[0][0]),op(') ='),res(RN[2][0]))+
+        fl(lbl('RN[3][2] = max('),num(RN[2][1]),op(','),num(RN[1][1]),op(') ='),res(RN[2][1]))
+      )+
+      fmtMultiCheck(2,[
+        {pj:0,rnVal:RN[2][0],lnVal:LN[0]},
+        {pj:1,rnVal:RN[2][1],lnVal:LN[1]}
+      ])
+    );
+    addLog('R4 · P3: P1 eligible (2==1+1 ✔), P2 eligible (2==1+1 ✔)');
+  });
+
+  at(t+=D,function(){
+    var qb=Q.slice();Q.push(1);Q.push(2);updLeft();
+    setPhase('ROUND 4  ·  P3 BUILDS QUEUE  →  TOKEN TO P1');
+    setFormulas(
+      fb('hd-green','④ QUEUE BUILD (FIFO)',
+        fl(lbl('push(P1):'),v('Q'),op('='),cnd('[P1]'))+
+        fl(lbl('push(P2):'),v('Q'),op('='),cnd('[P1, P2]'))+
+        fl(lbl('FIFO — P1 was first:'),arr('pop() = P1'))+
+        fl(lbl('Remaining:'),v('Q'),op('='),cnd('[P2]'),note('  P2 waits'))
+      )+
+      fb('hd-purp','TOKEN TRANSFER',
+        fl(arr('P3  ───── TOKEN ─────▶  P1'))+
+        fl(note('Queue still holds [P2] — P2 blocked until P1 finishes'))
+      )
+    );
+    addLog('R4 · P3 builds Q=[P1,P2], dequeues P1, TOKEN → P1');
+    showArr('tk31b');
+  });
+
+  at(t+=D,function(){
+    Q.shift();updLeft();
+    moveTok(0);setSt(0,'IN CS');setCS(true,0);
+    setPhase('ROUND 4  ·  P1 IN CS  (P2 WAITING IN QUEUE)');
+    setFormulas(fb('hd-blue','CS ACCESS GRANTED — P1',
+      fl(lbl('P1 executes CS (2nd time).'))+
+      fl(lbl('P2 is still in queue — BLOCKED.'))+
+      fl(lbl('Queue:'),cnd('[P2]'))+
+      fl(lbl('LN:   '),v('LN'),op('='),num('['+LN+']'))
+    ));
+    addLog('R4 · P1 enters CS (2nd time). P2 queued.');
+  });
+
+  at(t+=D*1.4,function(){
+    var old0=LN[0];LN[0]=RN[0][0];
+    setCS(false,0);setSt(0,'IDLE');updLeft();fLN(0);
+    setPhase('ROUND 4  ·  P1 EXITS CS  →  PASSES TOKEN TO P2');
+    setFormulas(
+      fmtLNUpdate(0,old0,LN[0])+
+      fmtScan(0,[{pj:2,rnVal:RN[0][2],lnVal:LN[2]}])+
+      fb('hd-green','QUEUE ALREADY HAS P2',
+        fl(lbl('Queue:'),cnd('[P2]'),arr('  →  pop() = P2'))+
+        fl(arr('P1  ───── TOKEN ─────▶  P2'))
+      )
+    );
+    addLog('R4 · P1 exits CS → LN[1]=2. TOKEN → P2 (from queue).');
+    showArr('tk12b');
+  });
+
+  at(t+=D,function(){
+    Q.shift();updLeft();
+    moveTok(1);setSt(1,'IN CS');setCS(true,1);
+    setPhase('ROUND 4  ·  P2 IN CRITICAL SECTION');
+    setFormulas(fb('hd-blue','CS ACCESS GRANTED — P2',
+      fl(lbl('P2 waited in queue — now SERVED.'))+
+      fl(lbl('P2 executes CS (2nd time).'))+
+      fl(lbl('Queue: '),v('Q'),op('='),note('[ ]'))
+    ));
+    addLog('R4 · P2 enters CS (2nd time).');
+  });
+
+  at(t+=D*1.4,function(){
+    var old1=LN[1];LN[1]=RN[1][1];
+    setCS(false,1);setSt(1,'IDLE');updLeft();fLN(1);
+    setPhase('ROUND 4  ·  P2 EXITS CS');
+    setFormulas(
+      fmtLNUpdate(1,old1,LN[1])+
+      fmtScan(1,[{pj:0,rnVal:RN[1][0],lnVal:LN[0]},{pj:2,rnVal:RN[1][2],lnVal:LN[2]}])+
+      fb('hd-green','RESULT',fl(arr('Queue empty  →  P2 keeps token')))
+    );
+    addLog('R4 · P2 exits CS → LN[2]=2. Keeps token.');
+  });
+
+  // R5: P1 requests again, P2 holds
+  at(t+=D,function(){
+    RN[0][0]++;RN[1][0]=RN[0][0];RN[2][0]=RN[0][0];
+    updLeft();[0,1,2].forEach(function(p){fRN(p,0);});
+    setSt(0,'REQUEST'); setPhase('ROUND 5  ·  P1 REQUESTS  (3rd time)');
+    setFormulas(fmtRequest(0,RN[0][0]));
+    addLog('R5 · P1: RN[1][1] 2→3, broadcasts REQUEST(P1,3)');
+    showArr('rq12');setTimeout(function(){showArr('rq13');},500);
+  });
+
+  at(t+=D,function(){
+    setPhase('ROUND 5  ·  P2 RECEIVES & CHECKS ELIGIBILITY');
+    setFormulas(
+      fb('hd-teal','③ P2 RECEIVES REQUEST FROM P1',
+        fl(lbl('Formula:'),v('RN[2][1]'),op('='),op('max('),v('RN[2][1]'),op(', sn)'))+
+        fl(lbl('Values: '),op('max('),num(RN[1][0]),op(','),num(RN[0][0]),op(')'),op('='),res(RN[1][0]))+
+        bf('RN[2][1]  =  max( '+RN[1][0]+', '+RN[0][0]+' )  =  '+RN[1][0])
+      )+
+      fmtMultiCheck(1,[{pj:0,rnVal:RN[1][0],lnVal:LN[0]}])
+    );
+    addLog('R5 · P2 checks: RN[2][1]=3 == LN[1]+1=3 ✔');
+  });
+
+  at(t+=D,function(){
+    var qb=Q.slice();Q.push(1);updLeft();
+    setPhase('ROUND 5  ·  P2 ENQUEUES P1  →  SENDS TOKEN');
+    setFormulas(
+      fmtQueue('push',1,qb,Q.slice())+
+      fb('hd-purp','TOKEN TRANSFER',fl(arr('P2  ───── TOKEN ─────▶  P1')))
+    );
+    addLog('R5 · P2 enqueues P1, sends TOKEN → P1');
+    showArr('tk21');
+  });
+
+  at(t+=D,function(){
+    Q.shift();updLeft();
+    moveTok(0);setSt(0,'IN CS');setCS(true,0);
+    setPhase('ROUND 5  ·  P1 IN CS  (3rd time)');
+    setFormulas(fb('hd-blue','CS ACCESS GRANTED',
+      fl(lbl('P1 executes critical section (3rd time).'))+
+      fl(lbl('LN: '),v('LN'),op('='),num('['+LN+']'))
+    ));
+    addLog('R5 · P1 enters CS (3rd time)');
+  });
+
+  at(t+=D*1.4,function(){
+    var old0=LN[0];LN[0]=RN[0][0];
+    setCS(false,0);setSt(0,'IDLE');updLeft();fLN(0);
+    setPhase('SIMULATION COMPLETE');
+    setFormulas(
+      fmtLNUpdate(0,old0,LN[0])+
+      fmtScan(0,[{pj:1,rnVal:RN[0][1],lnVal:LN[1]},{pj:2,rnVal:RN[0][2],lnVal:LN[2]}])+
+      fb('hd-green','FINAL STATE',
+        fl(lbl('LN  = '),res(JSON.stringify(LN)))+
+        fl(lbl('RN1 = '),res(JSON.stringify(RN[0])))+
+        fl(lbl('RN2 = '),res(JSON.stringify(RN[1])))+
+        fl(lbl('RN3 = '),res(JSON.stringify(RN[2])))+
+        fl(lbl('Q   = '),res('[ ]'))
+      )+
+      fb('hd-amber','PROPERTIES VERIFIED',
+        fl(yes('✔'),res('  Mutual Exclusion — only 1 process in CS at a time'))+
+        fl(yes('✔'),res('  Starvation-Free  — FIFO queue ensures fairness'))+
+        fl(yes('✔'),res('  O(N) messages    — N-1 requests + 1 token per entry'))
+      )
+    );
+    addLog('✅ All 5 rounds complete!');
+    document.getElementById('bstart').disabled=false;
+  });
+}
+
+function resetDemo(){
+  tids.forEach(function(id){clearTimeout(id);});tids=[];
+  RN=[[0,0,0],[0,0,0],[0,0,0]];LN=[0,0,0];Q=[];holder=2;
+  updLeft();
+  var tok=document.getElementById('tok');
+  tok.style.transition='none';
+  var p=tp(2);tok.style.left=p.left+'px';tok.style.top=p.top+'px';
+  setTimeout(function(){tok.style.transition='';},80);
+  document.getElementById('bstart').disabled=false;
+  setPhase('Press START to begin');setFormulas('');
+  document.getElementById('log').innerHTML='';
+  setCS(false,-1);
+  ['s1','s2','s3'].forEach(function(id){document.getElementById(id).textContent='IDLE';});
+  document.querySelectorAll('.al').forEach(function(e){e.classList.remove('go');});
+}
+
+window.addEventListener('load',function(){
+  var tok=document.getElementById('tok');
+  tok.style.transition='none';
+  var p=tp(2);tok.style.left=p.left+'px';tok.style.top=p.top+'px';
+  setTimeout(function(){tok.style.transition='';},100);
+  updLeft();
+});
+</script>
+</body>
+</html>
